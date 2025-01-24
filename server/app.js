@@ -52,42 +52,36 @@ sequelize.authenticate().then(() => {
 io.on('connection', async (socket) => {
     console.log('A user connected');
 
-    socket.on('disconnect', () => {
-        console.log('A user disconnected');
-    });
+    // Recuperar mensajes previos solo si el cliente no está en recuperación
+    if (!socket.recovered) {
+        try {
+            const results = await messages.findAll({
+                order: [['createdAt', 'ASC']], // Ordenar por fecha de creación
+            });
+            results.forEach((msg) => {
+                socket.emit('chat message', msg.content, msg.user);
+            });
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+        }
+    }
 
     socket.on('chat message', async (msg, senderId) => {
         try {
-            await messages.create({
+            const newMessage = await messages.create({
                 content: msg,
                 user: senderId,
             });
-            io.emit('chat message', msg, senderId);
+            io.emit('chat message', newMessage.content, senderId);
         } catch (error) {
-            console.log('Error: ' + error);
+            console.error('Error saving message:', error);
         }
     });
 
-    if (!socket.recovered) {
-        try {
-            const count = socket.handshake.auth.serverOffset || 0;
-            const results = await messages.findAll({
-                where: {
-                    id: {
-                        [Sequelize.Op.gt]: count,
-                    },
-                },
-            });
-
-            results.forEach((msg) => {
-                socket.emit('chat message', msg.content, msg.id.toString(), msg.user);
-            });
-        } catch (error) {
-            console.log('Error: ' + error);
-        }
-    }
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
+    });
 });
-
 
 app.use(logger('dev'));
 

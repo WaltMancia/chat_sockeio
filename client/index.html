@@ -16,13 +16,15 @@
         const input = document.getElementById('input');
         const messages = document.getElementById('messages');
 
-        socket.on('chat message', (msg, serverOffset, senderId) => {
+        socket.on('connect', () => {
+            console.log(`Connected with socket ID: ${socket.id}`);
+        });
+
+        socket.on('chat message', (msg, senderId) => {
             const messageClass = senderId === socket.id ? 'my-message' : 'other-message';
             const item = `<li class="${messageClass}">${msg}</li>`;
             messages.insertAdjacentHTML('beforeend', item);
-            // Desplazar hacia el fondo de los mensajes
             messages.scrollTop = messages.scrollHeight;
-            socket.serverOffset = serverOffset;
         });
 
         form.addEventListener('submit', function (e) {
