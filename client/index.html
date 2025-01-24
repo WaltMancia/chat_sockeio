@@ -17,10 +17,12 @@
         const messages = document.getElementById('messages');
 
         socket.on('chat message', (msg, serverOffset, senderId) => {
-            const myMessage = senderId === socket.id ? 'my-message' : '';
-            const item = `<li class="${myMessage}">${msg}</li>`;
+            const messageClass = senderId === socket.id ? 'my-message' : 'other-message';
+            const item = `<li class="${messageClass}">${msg}</li>`;
             messages.insertAdjacentHTML('beforeend', item);
             socket.serverOffset = serverOffset;
+            // scroll to bottom of messages
+            messages.scrollTop = messages.scrollHeight
         });
 
         form.addEventListener('submit', function (e) {
@@ -82,8 +84,7 @@
         #messages>li {
             padding: 0.5rem 1rem;
             margin: 1rem;
-            background: #FFF;
-            border-radius: 1.125rem 1.125rem 1.125rem 0;
+            border-radius: 1.125rem;
             min-height: 2.25rem;
             width: fit-content;
             max-width: 66%;
@@ -92,19 +93,29 @@
                 0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.1);
         }
 
-        /* Quita el color de fondo de los mensajes impares */
-        #messages>li:nth-child(odd) {
-            background: #FFF;
-        }
-
-        /* Aplica el color de fondo y alineación a los mensajes enviados por el cliente */
+        /* Mensajes enviados por el propio cliente */
         #messages>li.my-message {
             background: #5e7ae3;
             /* Color para los mensajes enviados por el propio cliente */
             color: white;
             /* Color del texto de los mensajes propios */
             text-align: right;
+            margin-left: auto;
+            /* Alinea a la derecha */
             border-radius: 1.125rem 1.125rem 0 1.125rem;
+            /* Bordes redondeados */
+        }
+
+        /* Mensajes recibidos de otros usuarios */
+        #messages>li.other-message {
+            background: #fff;
+            /* Color para los mensajes recibidos */
+            color: #333;
+            /* Color del texto de los mensajes recibidos */
+            text-align: left;
+            margin-right: auto;
+            /* Alinea a la izquierda */
+            border-radius: 1.125rem 1.125rem 1.125rem 0;
             /* Bordes redondeados */
         }
 
