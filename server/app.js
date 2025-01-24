@@ -80,13 +80,14 @@ io.on('connection', async (socket) => {
             });
 
             results.forEach((msg) => {
-                socket.emit('chat message', msg.content, msg.id.toString());
+                socket.emit('chat message', msg.content, msg.id.toString(), msg.user);
             });
         } catch (error) {
             console.log('Error: ' + error);
         }
     }
 });
+
 
 app.use(logger('dev'));
 

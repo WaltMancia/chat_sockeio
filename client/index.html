@@ -20,9 +20,9 @@
             const messageClass = senderId === socket.id ? 'my-message' : 'other-message';
             const item = `<li class="${messageClass}">${msg}</li>`;
             messages.insertAdjacentHTML('beforeend', item);
+            // Desplazar hacia el fondo de los mensajes
+            messages.scrollTop = messages.scrollHeight;
             socket.serverOffset = serverOffset;
-            // scroll to bottom of messages
-            messages.scrollTop = messages.scrollHeight
         });
 
         form.addEventListener('submit', function (e) {
