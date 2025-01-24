@@ -8,8 +8,11 @@
 
     <script type="module">
         import { io } from 'https://cdn.socket.io/4.8.1/socket.io.esm.min.js';
+
         const socket = io({
-            serverOffset: 0
+            auth: {
+                lastSeenMessageId: localStorage.getItem('lastSeenMessageId') || 0, // Recuperar último mensaje visto
+            },
         });
 
         const form = document.getElementById('form');
@@ -20,11 +23,15 @@
             console.log(`Connected with socket ID: ${socket.id}`);
         });
 
-        socket.on('chat message', (msg, senderId) => {
+        // Guardar el último mensaje recibido
+        socket.on('chat message', (msg, senderId, messageId) => {
             const messageClass = senderId === socket.id ? 'my-message' : 'other-message';
             const item = `<li class="${messageClass}">${msg}</li>`;
             messages.insertAdjacentHTML('beforeend', item);
             messages.scrollTop = messages.scrollHeight;
+
+            // Actualizar el último mensaje recibido
+            localStorage.setItem('lastSeenMessageId', messageId);
         });
 
         form.addEventListener('submit', function (e) {
@@ -44,6 +51,7 @@
         html {
             font-family: 'Red Hat Display', sans-serif;
             font-weight: 400;
+            font-size: 16px;
             line-height: 1.25em;
             letter-spacing: 0.025em;
             color: #333;
@@ -72,7 +80,7 @@
         #messages {
             list-style-type: none;
             margin: 0;
-            padding: 0;
+            padding: 1rem;
             overflow-y: auto;
             height: 100%;
             scroll-behavior: smooth;
@@ -95,30 +103,33 @@
                 0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.1);
         }
 
-        /* Mensajes enviados por el propio cliente */
+        /* Mensajes enviados por el cliente */
         #messages>li.my-message {
             background: #5e7ae3;
-            /* Color para los mensajes enviados por el propio cliente */
             color: white;
-            /* Color del texto de los mensajes propios */
             text-align: right;
             margin-left: auto;
-            /* Alinea a la derecha */
             border-radius: 1.125rem 1.125rem 0 1.125rem;
-            /* Bordes redondeados */
+            padding: 1rem;
+            /* Padding más grande */
+            font-size: 1rem;
+            /* Aumentar tamaño de fuente */
+            word-wrap: break-word;
+            /* Asegurar que el texto largo no desborde */
         }
 
         /* Mensajes recibidos de otros usuarios */
         #messages>li.other-message {
             background: #fff;
-            /* Color para los mensajes recibidos */
             color: #333;
-            /* Color del texto de los mensajes recibidos */
             text-align: left;
             margin-right: auto;
-            /* Alinea a la izquierda */
             border-radius: 1.125rem 1.125rem 1.125rem 0;
-            /* Bordes redondeados */
+            padding: 1rem;
+            /* Padding más grande */
+            font-size: 1rem;
+            /* Aumentar tamaño de fuente */
+            word-wrap: break-word;
         }
 
         #form {
@@ -158,6 +169,24 @@
 
         #form>button:hover {
             background: #0cf;
+        }
+
+        /* Adaptar para pantallas pequeñas */
+        @media (max-width: 768px) {
+            #chat {
+                width: 100%;
+                height: calc(100vh - 20px);
+            }
+
+            #messages>li {
+                font-size: 0.9rem;
+                /* Tamaño reducido para móviles */
+                padding: 0.75rem;
+            }
+
+            #input {
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>

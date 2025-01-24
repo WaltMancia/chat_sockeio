@@ -52,19 +52,31 @@ sequelize.authenticate().then(() => {
 io.on('connection', async (socket) => {
     console.log('A user connected');
 
-    // Recuperar mensajes previos solo si el cliente no está en recuperación
-    if (!socket.recovered) {
-        try {
-            const results = await messages.findAll({
-                order: [['createdAt', 'ASC']], // Ordenar por fecha de creación
-            });
-            results.forEach((msg) => {
-                socket.emit('chat message', msg.content, msg.user);
-            });
-        } catch (error) {
-            console.error('Error fetching messages:', error);
-        }
+    // Capturar último mensaje que el cliente ha visto
+    const lastSeenMessageId = socket.handshake.auth.lastSeenMessageId || 0;
+
+    try {
+        // Solo enviar mensajes no vistos
+        const results = await messages.findAll({
+            where: {
+                id: {
+                    [Sequelize.Op.gt]: lastSeenMessageId,
+                },
+            },
+            order: [['id', 'ASC']],
+        });
+
+        // Emitir solo los nuevos mensajes al cliente
+        results.forEach((msg) => {
+            socket.emit('chat message', msg.content, msg.user, msg.id);
+        });
+    } catch (error) {
+        console.log('Error fetching messages: ', error);
     }
+
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
+    });
 
     socket.on('chat message', async (msg, senderId) => {
         try {
@@ -72,14 +84,10 @@ io.on('connection', async (socket) => {
                 content: msg,
                 user: senderId,
             });
-            io.emit('chat message', newMessage.content, senderId);
+            io.emit('chat message', newMessage.content, newMessage.user, newMessage.id);
         } catch (error) {
-            console.error('Error saving message:', error);
+            console.log('Error saving message: ', error);
         }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('A user disconnected');
     });
 });
 
