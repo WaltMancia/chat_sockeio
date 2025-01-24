@@ -35,7 +35,10 @@ const messages = sequelize.define('messages', {
     },
     user: {
         type: Sequelize.TEXT,
-    }
+    },
+    senderId: {
+        type: Sequelize.STRING, // Almacena el identificador del cliente
+    },
 },
     {
         timestamps: true,
@@ -51,24 +54,23 @@ sequelize.authenticate().then(() => {
 
 io.on('connection', async (socket) => {
     console.log('A user connected');
+    const clientId = socket.handshake.auth.clientId || `client-${Date.now()}`;  // Generate a new clientId if not provided
+    console.log(`Cliente conectado con ID persistente: ${clientId}`);
 
-    // Capturar último mensaje que el cliente ha visto
-    const lastSeenMessageId = socket.handshake.auth.lastSeenMessageId || 0;
+    socket.clientId = clientId;
 
     try {
-        // Solo enviar mensajes no vistos
+        // Get the last 20 messages
         const results = await messages.findAll({
-            where: {
-                id: {
-                    [Sequelize.Op.gt]: lastSeenMessageId,
-                },
-            },
-            order: [['id', 'ASC']],
+            order: [['id', 'DESC']],
+            limit: 20,
         });
 
-        // Emitir solo los nuevos mensajes al cliente
-        results.forEach((msg) => {
-            socket.emit('chat message', msg.content, msg.user, msg.id);
+        const orderedResults = results.reverse();
+
+        // Emit the initial message history
+        orderedResults.forEach((msg) => {
+            socket.emit('chat message', msg.content, msg.senderId, msg.id);
         });
     } catch (error) {
         console.log('Error fetching messages: ', error);
@@ -82,9 +84,10 @@ io.on('connection', async (socket) => {
         try {
             const newMessage = await messages.create({
                 content: msg,
-                user: senderId,
+                user: `User-${socket.id}`,  // Usuario único basado en el ID del socket
+                senderId,  // Almacenar el ID persistente del cliente
             });
-            io.emit('chat message', newMessage.content, newMessage.user, newMessage.id);
+            io.emit('chat message', newMessage.content, newMessage.senderId, newMessage.id);
         } catch (error) {
             console.log('Error saving message: ', error);
         }

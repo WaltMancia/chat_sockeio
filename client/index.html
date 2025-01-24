@@ -9,39 +9,58 @@
     <script type="module">
         import { io } from 'https://cdn.socket.io/4.8.1/socket.io.esm.min.js';
 
+        // Generar y guardar un identificador único para este cliente
+        const clientId = localStorage.getItem('clientId') || `client-${Date.now()}`; // Identificador único
+        localStorage.setItem('clientId', clientId);
+
+        // Configurar el socket
         const socket = io({
             auth: {
-                lastSeenMessageId: localStorage.getItem('lastSeenMessageId') || 0, // Recuperar último mensaje visto
+                clientId: clientId,
             },
         });
 
+        // Elementos del DOM
         const form = document.getElementById('form');
         const input = document.getElementById('input');
         const messages = document.getElementById('messages');
 
+        // Conexión al servidor
         socket.on('connect', () => {
-            console.log(`Connected with socket ID: ${socket.id}`);
+            console.log(`Connected with socket ID: ${socket.id} and client ID: ${clientId}`);
         });
 
-        // Guardar el último mensaje recibido
+        // Recibir mensajes del servidor
         socket.on('chat message', (msg, senderId, messageId) => {
-            const messageClass = senderId === socket.id ? 'my-message' : 'other-message';
+            // Comparar el senderId con el clientId local
+            const messageClass = senderId === clientId ? 'my-message' : 'other-message';
             const item = `<li class="${messageClass}">${msg}</li>`;
             messages.insertAdjacentHTML('beforeend', item);
-            messages.scrollTop = messages.scrollHeight;
 
-            // Actualizar el último mensaje recibido
+            // Desplazar si el usuario está cerca del final
+            const isAtBottom = messages.scrollHeight - messages.scrollTop <= messages.clientHeight + 100;
+            if (isAtBottom) {
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            // Guardar el último ID de mensaje visto
             localStorage.setItem('lastSeenMessageId', messageId);
         });
 
+        // Manejar el envío de mensajes
         form.addEventListener('submit', function (e) {
             e.preventDefault();
             if (input.value) {
-                socket.emit('chat message', input.value, socket.id);
+                // Enviar mensaje al servidor junto con el clientId
+                socket.emit('chat message', input.value, clientId);
                 input.value = '';
             }
         });
 
+        // Asegurar que la vista inicial esté ajustada
+        window.addEventListener('load', () => {
+            messages.scrollTop = messages.scrollHeight;
+        });
     </script>
 
     <style>
@@ -52,140 +71,122 @@
             font-family: 'Red Hat Display', sans-serif;
             font-weight: 400;
             font-size: 16px;
-            line-height: 1.25em;
-            letter-spacing: 0.025em;
             color: #333;
             background: #F7F7F7;
             margin: 0;
-            display: grid;
-            place-content: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             height: 100vh;
-            padding: 36px;
-            grid-template-rows: 1fr;
+            padding: 0;
         }
 
         #chat {
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 10px;
             overflow: hidden;
-            width: 400px;
-            height: 100%;
-            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
             background: white;
-            box-shadow:
-                0 0 8rem 0 rgba(0, 0, 0, 0.1),
-                0rem 2rem 4rem -3rem rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
         #messages {
-            list-style-type: none;
+            list-style: none;
             margin: 0;
-            padding: 1rem;
+            padding: 16px;
             overflow-y: auto;
-            height: 100%;
-            scroll-behavior: smooth;
-            padding-bottom: 48px;
+            flex: 1;
             background: #F7F7F7;
-            box-shadow:
-                inset 0 2rem 2rem -2rem rgba(0, 0, 0, 0.05),
-                inset 0 -2rem 2rem -2rem rgba(0, 0, 0, 0.05);
         }
 
         #messages>li {
-            padding: 0.5rem 1rem;
-            margin: 1rem;
-            border-radius: 1.125rem;
-            min-height: 2.25rem;
-            width: fit-content;
-            max-width: 66%;
-            box-shadow:
-                0 0 2rem rgba(0, 0, 0, 0.075),
-                0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.1);
+            margin: 8px 0;
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 75%;
+            word-wrap: break-word;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
-        /* Mensajes enviados por el cliente */
         #messages>li.my-message {
             background: #5e7ae3;
             color: white;
-            text-align: right;
             margin-left: auto;
-            border-radius: 1.125rem 1.125rem 0 1.125rem;
-            padding: 1rem;
-            /* Padding más grande */
-            font-size: 1rem;
-            /* Aumentar tamaño de fuente */
-            word-wrap: break-word;
-            /* Asegurar que el texto largo no desborde */
         }
 
-        /* Mensajes recibidos de otros usuarios */
         #messages>li.other-message {
             background: #fff;
             color: #333;
-            text-align: left;
             margin-right: auto;
-            border-radius: 1.125rem 1.125rem 1.125rem 0;
-            padding: 1rem;
-            /* Padding más grande */
-            font-size: 1rem;
-            /* Aumentar tamaño de fuente */
-            word-wrap: break-word;
         }
 
         #form {
-            bottom: 0;
             display: flex;
-            height: 48px;
-            left: 0;
-            padding: 4px;
-            position: absolute;
-            right: 0;
-            box-sizing: border-box;
+            align-items: center;
+            padding: 8px;
+            gap: 8px;
+            background: #fff;
         }
 
         #input {
-            border-radius: 9999px;
-            border: 1px solid #eee;
             flex: 1;
-            margin: 4px;
-            padding: 0 8px;
-            box-shadow:
-                0 0 1rem rgba(0, 0, 0, 0.1),
-                0rem 1rem 1rem -1rem rgba(0, 0, 0, 0.2);
-        }
-
-        #input:focus {
-            outline: 0;
+            padding: 12px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         #form>button {
+            padding: 12px 16px;
+            font-size: 1rem;
             background: #09f;
-            color: #fff;
-            border: 0;
-            margin: 4px;
-            border-radius: 7px;
-            transition: background 200ms;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
 
         #form>button:hover {
-            background: #0cf;
+            background: #0077cc;
         }
 
-        /* Adaptar para pantallas pequeñas */
+        /* Pantallas pequeñas */
         @media (max-width: 768px) {
             #chat {
                 width: 100%;
-                height: calc(100vh - 20px);
+                height: 100vh;
+                border: none;
+                box-shadow: none;
             }
 
-            #messages>li {
-                font-size: 0.9rem;
-                /* Tamaño reducido para móviles */
-                padding: 0.75rem;
+            #messages {
+                padding: 8px;
+            }
+
+            #form {
+                padding: 4px;
             }
 
             #input {
+                font-size: 1rem;
+                padding: 10px;
+            }
+
+            #form>button {
                 font-size: 0.9rem;
+                padding: 10px;
+            }
+
+            html,
+            body {
+                height: 100%;
             }
         }
     </style>
@@ -195,7 +196,7 @@
     <section id="chat">
         <ul id="messages"></ul>
         <form id="form">
-            <input type="text" name="message" id="input" placeholder="Escriba un mensaje" autocomplete="off" />
+            <input type="text" id="input" placeholder="Escriba un mensaje" autocomplete="off" />
             <button type="submit">Enviar</button>
         </form>
     </section>
